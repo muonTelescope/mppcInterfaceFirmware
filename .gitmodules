@@ -1,0 +1,3 @@
+[submodule "nau7802"]
+	path = nau7802
+	url = http://github.com/Sawaiz/nau7802.git
