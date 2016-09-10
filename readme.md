@@ -17,139 +17,139 @@ Communication through I2C the following shows the register map
   <!--Read Voltages-->
   <tr>
     <td>0x00</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 0 Voltage (in uV) 31:24</td>
   </tr>
 
   <tr>
     <td>0x01</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 0 Voltage (in uV) 23:16</td>
   </tr>
 
   <tr>
     <td>0x02</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 0 Voltage (in uV) 15:8</td>
   </tr>
 
   <tr>
     <td>0x03</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 0 Voltage (in uV) 7:0</td>
   </tr>
 
   <tr>
     <td>0x04</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 1 Voltage (in uV) 31:24</td>
   </tr>
 
   <tr>
     <td>0x05</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 1 Voltage (in uV) 23:16</td>
   </tr>
 
   <tr>
     <td>0x06</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 1 Voltage (in uV) 15:8</td>
   </tr>
 
   <tr>
     <td>0x07</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Channel 1 Voltage (in uV) 7:0</td>
   </tr>
 
   <tr>
     <td>0x08-0x1F</td>
-    <td colspan="8" style="text-align:center;">...</td>
+    <td colspan="8">...</td>
   </tr>
 
   <!--Read Tempratures-->
   <tr>
     <td>0x20</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Channel 0 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 0 Temprature (in uC) 31:24</td>
   </tr>
 
   <tr>
     <td>0x21</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Channel 0 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 0 Temprature (in uC) 23:16</td>
   </tr>
 
   <tr>
     <td>0x22</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Channel 0 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 0 Temprature (in uC) 15:8</td>
   </tr>
 
   <tr>
     <td>0x23</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Channel 0 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 0 Temprature (in uC) 7:0</td>
   </tr>
 
   <tr>
     <td>0x24</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Channel 1 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 1 Temprature (in uC) 31:24</td>
   </tr>
 
   <tr>
     <td>0x25</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Channel 1 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 1 Temprature (in uC) 23:16</td>
   </tr>
 
   <tr>
     <td>0x26</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Channel 1 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 1 Temprature (in uC) 15:8</td>
   </tr>
 
   <tr>
     <td>0x27</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Channel 1 Temprature (in uC) 7:0</td>
+    <td colspan="8">Channel 1 Temprature (in uC) 7:0</td>
   </tr>
 
   <tr>
     <td>0x28-0x3F</td>
-    <td colspan="8" style="text-align:center;">...</td>
+    <td colspan="8">...</td>
   </tr>
   
   <!--Write Registers-->
   <tr>
     <td>0x40</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Write Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 0 Voltage (in uV) 31:24</td>
   </tr>
 
   <tr>
     <td>0x41</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Write Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 0 Voltage (in uV) 23:16</td>
   </tr>
 
   <tr>
     <td>0x42</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Write Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 0 Voltage (in uV) 15:8</td>
   </tr>
 
   <tr>
     <td>0x43</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Write Channel 0 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 0 Voltage (in uV) 7:0</td>
   </tr>
 
   <tr>
     <td>0x44</td>
-    <td colspan="8" style="text-align:center;">Byte 3 Write Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 1 Voltage (in uV) 31:24</td>
   </tr>
 
   <tr>
     <td>0x45</td>
-    <td colspan="8" style="text-align:center;">Byte 2 Write Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 1 Voltage (in uV) 23:16</td>
   </tr>
 
   <tr>
     <td>0x46</td>
-    <td colspan="8" style="text-align:center;">Byte 1 Write Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 1 Voltage (in uV) 15:8</td>
   </tr>
 
   <tr>
     <td>0x47</td>
-    <td colspan="8" style="text-align:center;">Byte 0 Write Channel 1 Voltage (in uV) 7:0</td>
+    <td colspan="8">Write Channel 1 Voltage (in uV) 7:0</td>
   </tr>
 
   <tr>
     <td>0x48-0x5F</td>
-    <td colspan="8" style="text-align:center;">...</td>
+    <td colspan="8">...</td>
   </tr>
   <tr>
     <td>0x60</td>
