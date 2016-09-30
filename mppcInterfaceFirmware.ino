@@ -9,11 +9,19 @@
 
 #define TCAADDR 0x70
 
-#define led 8
-#define SCL 2
-#define SDA 3
+// // Breadboard Config
+// #define led 8
+// #define SCL 2
+// #define SDA 3
 
-int csPins[] = {6, 5, 4, 7};
+// int csPins[] = {6, 5, 4, 7};
+
+// Production A config
+#define led 8
+#define SCL A0
+#define SDA A1
+
+int csPins[] = {2, 3, 4, 5};
 
 long readV[8];
 long readT[8];
@@ -55,10 +63,10 @@ typedef struct registerMap {
   char null[159];
 };
 
-void printDouble(double val, byte precision);
 void tcaselect(uint8_t i);
+long readMicroVolts(uint8_t i);
+long readMicroCentigrade(uint8_t i);
 void setVoltage(byte volts, int csPin);
-void printHex(char X);
 
 // Create the NAU7802 ADC object
 NAU7802 adc = NAU7802();
@@ -72,7 +80,7 @@ void setup(void) {
   // Begin acting as I2C slave
   Wire.begin(i2cSlaveAdress);    // join i2c bus with address #8
   Wire.onReceive(receiveEvent);  // Getting Data
-  Wire.onRequest(requestEvent);  // Being asked for data
+  Wire.onRequest(requestEvent);  // Being asked for data  
   // Also Begin acting as I2C master
   wire.begin();
 
@@ -81,6 +89,7 @@ void setup(void) {
   for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
     // I2C ADC
     tcaselect(i);
+    
     adc.begin(SDA, SCL);
     adc.avcc2V4();
     // SPI HV
@@ -125,8 +134,8 @@ void loop(void) {
       }
       setVoltage(voltageByte[i], csPins[i]);
 
-    } else if (writeV[i] > readV[i] && writeV[i] > 50000000) {
-      // Serial.print(" Current Voltage too High, Increse Byte
+    } else if (writeV[i] < readV[i] && writeV[i] > 50000000) {
+      // Current Voltage too High, Increse Byte
       if (voltageByte[i] != 255) {
         voltageByte[i]++;
       }
@@ -137,23 +146,10 @@ void loop(void) {
     }
   }
 
-  // Update voltage registers
+  // Update voltage and temprature registers
   for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
-    tcaselect(i);     // Change I2C Switch to correct channel
-    adc.selectCh1();  // Channel 1 has 50x Divided High voltage
-    readV[i] = adc.readmV() * 50 * 1000000;  // 1000000x Convert to microvolts
-  }
-  // Update Temprature registers
-  for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
-    tcaselect(i);  // Change I2C Switch to correct channel
-    // Selecting Channel 2 Causes reading to get stuck at 1.20V
-    // adc.selectCh2();  // Channel 2 Has thermistor
-    // Need to implement conversion to temprature
-    float temp = 100000.0 / ((8388608.0 / (adc.readmV()) - 1));
-    temp = -log(temp);
-    temp = 1 / (0.001129148 + (0.000234125 * temp) +
-                (0.0000000876741 * temp * temp * temp));
-    readT[i] = (temp - 273.15) * 1000000;  // convert to microCentigrade
+    readV[i] = readMicroVolts(i);
+    readT[i] = readMicroCentigrade(i);
   }
 
   // Dump readV and readT to registerStruct
@@ -203,4 +199,21 @@ void tcaselect(uint8_t i) {
   wire.beginTransmission(TCAADDR);
   wire.write(1 << i);
   wire.endTransmission();
+}
+
+long readMicroVolts(uint8_t i) {
+  tcaselect(i);     // Change I2C Switch to correct channel
+  adc.selectCh1();  // Channel 1 has 50x Divided High voltage
+  return adc.readmV() * 50 * 1000000;  // 1000000x Convert to microvolts
+}
+
+long readMicroCentigrade(uint8_t i) {
+  tcaselect(i);     // Change I2C Switch to correct channel
+  // adc.selectCh2();  // Channel 2 has thermistor
+  // Need to implement conversion to temprature
+  float temp = 100000.0 / ((8388608.0 / (adc.readmV()) - 1));
+  temp = -log(temp);
+  temp = 1 / (0.001129148 + (0.000234125 * temp) +
+              (0.0000000876741 * temp * temp * temp));
+  return (temp - 273.15) * 1000000;  // convert to microCentigrade
 }
