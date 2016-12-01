@@ -5,23 +5,27 @@
 #include <SoftwareWire.h>
 #include <math.h>
 
-#define i2cSlaveAdress 8
+#define i2cSlaveAdress 0x08
 
 #define TCAADDR 0x70
 
-// // Breadboard Config
+#define ENUMERATE
+// #define REGMAP
+#define DEBUG
+
+// Breadboard Config
 // #define led 8
 // #define SCL 2
 // #define SDA 3
-
+//
 // int csPins[] = {6, 5, 4, 7};
 
 // Production A config
-#define led 8
+#define led 9
 #define SCL A0
 #define SDA A1
 
-int csPins[] = {2, 3, 4, 5};
+int csPins[] = {8, 7, 6, 5};
 
 long readV[8];
 long readT[8];
@@ -83,15 +87,21 @@ void setup(void) {
   Wire.onRequest(requestEvent);  // Being asked for data  
   // Also Begin acting as I2C master
   wire.begin();
-
   // Initalize all ADCs assume each HV has ADC
   // Initilaize SPI HV pins
   for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
+
+    #ifdef ENUMERATE
+    Serial.print("Initalize Channel ");
+    Serial.println(i);
+    #endif //ENUMERATE
+
     // I2C ADC
     tcaselect(i);
     
     adc.begin(SDA, SCL);
     adc.avcc2V4();
+    
     // SPI HV
     pinMode(csPins[i], OUTPUT);
     digitalWrite(csPins[i], HIGH);
@@ -101,6 +111,7 @@ void setup(void) {
 }
 
 void loop(void) {
+  #ifdef REGMAP
   // Debugging Print Register map
   struct registerMap* strucPtr = &registers;
   unsigned char* charPtr = (unsigned char*)strucPtr;
@@ -115,7 +126,7 @@ void loop(void) {
     Serial.print(charPtr[i], HEX);
   }
   Serial.println();
-  // End Debugging
+  #endif //REGMAP
 
   // Check if voltage needs to be changed
   // Slow and pretty terrible closed loop control
