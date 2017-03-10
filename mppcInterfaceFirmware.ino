@@ -11,21 +11,29 @@
 
 #define ENUMERATE
 // #define REGMAP
-#define DEBUG
+#define SERIALINTERFACE
+// #define DEBUG
 
-// Breadboard Config
-// #define led 8
-// #define SCL 2
-// #define SDA 3
-//
-// int csPins[] = {6, 5, 4, 7};
 
 // Production A config
 #define led 9
 #define SCL A0
 #define SDA A1
 
-int csPins[] = {8, 7, 6, 5};
+// Thermistor
+#define BCOEFFICIENT 4250
+#define THERMISTORNOMINAL 100000
+#define TEMPERATURENOMINAL 25
+#define SERIESRESISTOR 200000.0
+
+static uint8_t csPins[] = {8, 7, 6, 5};
+// Calibrate voltage offsett out of  
+static float calibrationFactor[] = {1.0, 1.0, 1.0, 1.0};
+// Voltage range , {{min0,max0},{min1,max1}...}
+static float voltageRange[][2] = {{52.5, 57.5},
+                                  {52.5, 57.5},
+                                  {52.5, 57.5},
+                                  {52.5, 57.5}};
 
 long readV[8];
 long readT[8];
@@ -68,9 +76,10 @@ typedef struct registerMap {
 };
 
 void tcaselect(uint8_t i);
-long readMicroVolts(uint8_t i);
-long readMicroCentigrade(uint8_t i);
-void setVoltage(byte volts, int csPin);
+long readMicroVolts(uint8_t channel, uint8_t numSamples);
+long readMicroCentigrade(uint8_t channel, uint8_t numSamples);
+void setByte(uint8_t byte, uint8_t channel);
+int setVoltage(float voltage, uint8_t channel);
 
 // Create the NAU7802 ADC object
 NAU7802 adc = NAU7802();
@@ -87,10 +96,9 @@ void setup(void) {
   Wire.onRequest(requestEvent);  // Being asked for data  
   // Also Begin acting as I2C master
   wire.begin();
-  // Initalize all ADCs assume each HV has ADC
-  // Initilaize SPI HV pins
-  for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
-
+  // Initilaize SPI HV pins, and ADCs assume each HV has ADC
+  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]) ; i++) {
+    
     #ifdef ENUMERATE
     Serial.print("Initalize Channel ");
     Serial.println(i);
@@ -101,16 +109,23 @@ void setup(void) {
     
     adc.begin(SDA, SCL);
     adc.avcc2V4();
-    
+    adc.rate320sps();
+
     // SPI HV
     pinMode(csPins[i], OUTPUT);
     digitalWrite(csPins[i], HIGH);
   }
   SPI.begin();
   SPI.setBitOrder(MSBFIRST);
+
+  // Trun all channels off
+  for(int i = 0 ; i < 4 ; i++ ){
+      setByte(i, 0);
+  }
 }
 
 void loop(void) {
+
   #ifdef REGMAP
   // Debugging Print Register map
   struct registerMap* strucPtr = &registers;
@@ -128,40 +143,74 @@ void loop(void) {
   Serial.println();
   #endif //REGMAP
 
-  // Check if voltage needs to be changed
-  // Slow and pretty terrible closed loop control
-  //  Oscilates arround correct value
-  //  Changes once per cycle
-  for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
-    if (readV[i] < 50000000 &&
-        writeV[i] > 50000000) {  // If the HV module was off this will turn it
-                                 // back on at it lowest value
-      voltageByte[i] = 255;
+  #ifdef SERIALINTERFACE
+  // Set the voltage when our recive a float
+  if (Serial.available() > 0) {
+    // Read the channel and voltage requested from serial line
+    long channel = Serial.parseInt();
+    float voltage = Serial.parseFloat();
+    // Remove remaining charachets from serial pool.
+    while (Serial.available() > 0) {
+      Serial.read();
     }
-    if (writeV[i] > readV[i] && writeV[i] > 50000000) {
-      // Current Voltage too Low, Decrese Byte
-      if (voltageByte[i] != 0 && voltageByte[i] != 1) {
-        voltageByte[i]--;
-      }
-      setVoltage(voltageByte[i], csPins[i]);
+    // Print out request
+    Serial.print("Requested Channel ");
+    Serial.print(channel);
+    Serial.print(" Voltage: ");
+    Serial.println(voltage, 6);
 
-    } else if (writeV[i] < readV[i] && writeV[i] > 50000000) {
-      // Current Voltage too High, Increse Byte
-      if (voltageByte[i] != 255) {
-        voltageByte[i]++;
+    // If channel number is not availible, let the user know
+    if((channel > sizeof(csPins)/sizeof(csPins[0])) | channel < 0){
+      Serial.print("Channel out of range, this device only has ");
+      Serial.print((sizeof(csPins)/sizeof(csPins[0]))+1);
+      Serial.println(" channels.");
+    } else if (setVoltage(voltage, channel) == 0){
+      delay(500);
+      float measuredVoltage = readMicroVolts(channel,10) / 1000000.0;
+      float error = ((abs(voltage - measuredVoltage)) / (voltage)) * 100;
+      Serial.print("Voltage: ");
+      Serial.print(measuredVoltage,4);
+      Serial.print(" Yields error of: ");
+      Serial.print(error, 4);
+      Serial.println("%.");
+    } else {
+      Serial.print("Error, out of range: ");
+      Serial.print(voltageRange[0][0], 3);
+      Serial.print(" V - ");
+      Serial.print(voltageRange[0][1], 3);
+      Serial.println(" V");
+    }
+  }
+  #endif //SERIALINTERFACE
+
+  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]); i++) {
+    float target = writeV[i]/1000000.0;
+    // Try and set the voltage
+    if(setVoltage(target, i) != 0){
+      // Set the voltage to the max if request exceeds max by more than 1V
+      // Set the voltage to the min if request below min by less than 1V
+      // Otherwise turn off
+      if((target > (voltageRange[i][1] + 1))|(target < (voltageRange[i][0] - 1))){
+        setByte(0,i);
+      } else if(target > voltageRange[i][1]){
+        setVoltage(voltageRange[i][1],i);
+      } else if (target < voltageRange[i][0]) {
+        setVoltage(voltageRange[i][0],i);
       }
-      setVoltage(voltageByte[i], csPins[i]);
-    } else if (writeV[i] < 50000000) {  // Turn off HV Module if voltage
-                                        // requested is less than 50V
-      setVoltage(0, csPins[i]);
     }
   }
 
   // Update voltage and temprature registers
-  for (int i = 0; i < sizeof(csPins) / sizeof(int); i++) {
-    readV[i] = readMicroVolts(i);
-    readT[i] = readMicroCentigrade(i);
+  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]); i++) {
+    readV[i] = readMicroVolts(i,10);
+    readT[i] = readMicroCentigrade(i,10);
   }
+
+  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]) ; i++) {
+    Serial.print(readT[i]/1000000.0,6);
+    Serial.print(",");
+  }
+    Serial.println("");  
 
   // Dump readV and readT to registerStruct
   memcpy(&registers.readV0, &readV, sizeof(readV));
@@ -198,33 +247,71 @@ void requestEvent() {
   currentRegister++;
 }
 
-void setVoltage(byte volts, int csPin) {
-  digitalWrite(csPin, LOW);
-  SPI.transfer(volts);
-  digitalWrite(csPin, HIGH);
-}
-
 void tcaselect(uint8_t i) {
-  if (i > 7) return;
-
+  if (i > 7) {return;}
   wire.beginTransmission(TCAADDR);
   wire.write(1 << i);
   wire.endTransmission();
 }
 
-long readMicroVolts(uint8_t i) {
-  tcaselect(i);     // Change I2C Switch to correct channel
-  adc.selectCh1();  // Channel 1 has 50x Divided High voltage
-  return adc.readmV() * 50 * 1000000;  // 1000000x Convert to microvolts
+int setVoltage(float voltage, uint8_t channel) {
+  float min = voltageRange[channel][0];
+  float max = voltageRange[channel][1];
+  float byte = 0;
+  byte = max - voltage;
+  byte *= (254 / (max - min));
+  byte++;
+  byte = round(byte);
+  if (byte < 1 || byte > 255) {
+    return 1;
+  } else {
+    setByte((uint8_t)byte, channel);
+    return 0;
+  }
 }
 
-long readMicroCentigrade(uint8_t i) {
-  tcaselect(i);     // Change I2C Switch to correct channel
-  // adc.selectCh2();  // Channel 2 has thermistor
-  // Need to implement conversion to temprature
-  float temp = 100000.0 / ((8388608.0 / (adc.readmV()) - 1));
-  temp = -log(temp);
-  temp = 1 / (0.001129148 + (0.000234125 * temp) +
-              (0.0000000876741 * temp * temp * temp));
-  return (temp - 273.15) * 1000000;  // convert to microCentigrade
+// Byte and channel
+void setByte(uint8_t byte, uint8_t channel) {
+  digitalWrite(csPins[channel], LOW);
+  SPI.transfer(byte);
+  digitalWrite(csPins[channel], HIGH);
+}
+
+long readMicroVolts(uint8_t channel, uint8_t numSamples) {
+  tcaselect(channel);  // Change I2C Switch to correct channel  
+  adc.selectCh1();     // Channel 1 has 50x Divided High voltage
+  adc.readmV();
+  adc.readmV();
+  adc.readmV();
+  adc.readmV();
+  float average = 0;
+  for (int i = 0; i < numSamples; i++) {
+    average += adc.readmV();
+  }
+  average /= numSamples;
+  return (long)(average * 50.0 * calibrationFactor[channel] * 1000000.0);  // 1000000x Convert to microvolts
+}
+
+long readMicroCentigrade(uint8_t channel, uint8_t numSamples) {
+  tcaselect(channel);  // Change I2C Switch to correct channel  
+  adc.selectCh2();     // Channel 2 has thermistor
+  adc.readmV();
+  adc.readmV();
+  adc.readmV();
+  adc.readmV();
+  float average = 0;
+  for (int i = 0; i < numSamples; i++) {
+    average += adc.readADC();
+  }
+  average /= numSamples;
+  float steinhart;
+  steinhart = (average * SERIESRESISTOR) /
+              (16777216 - average);                  // Resistance of the thermistor
+  steinhart = steinhart / THERMISTORNOMINAL;         // (R/Ro)
+  steinhart = log(steinhart);                        // ln(R/Ro)
+  steinhart /= BCOEFFICIENT;                         // 1/B * ln(R/Ro)
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);  // + (1/To)
+  steinhart = 1.0 / steinhart;                       // Invert
+  steinhart -= 273.15;                               // Convert to C
+  return (steinhart * 1000000);                      // Return microCentigrade
 }
