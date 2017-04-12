@@ -14,7 +14,6 @@
 #define SERIALINTERFACE
 // #define DEBUG
 
-
 // Production A config
 #define led 9
 #define SCL A0
@@ -25,6 +24,9 @@
 #define THERMISTORNOMINAL 100000
 #define TEMPERATURENOMINAL 25
 #define SERIESRESISTOR 200000.0
+
+// Temprature coefficent or Vop (mV/C)
+#define dT_Vop 54
 
 static uint8_t csPins[] = {8, 7, 6, 5};
 // Calibrate voltage offsett out of  
@@ -109,7 +111,6 @@ void setup(void) {
     
     adc.begin(SDA, SCL);
     adc.avcc2V4();
-    adc.rate320sps();
 
     // SPI HV
     pinMode(csPins[i], OUTPUT);
@@ -254,6 +255,13 @@ void tcaselect(uint8_t i) {
   wire.endTransmission();
 }
 
+// Compensates voltage for temprature variaiton
+float compensateVoltage(float voltageAt25C, float temp){
+  float tempDiff = temp-25.0;
+  return (voltageAt25C + (tempDiff * dT_Vop * 0.001)); // Convert to mV, multiply by diffrence in C
+}
+
+// Given a voltage, set it on the specifc channel
 int setVoltage(float voltage, uint8_t channel) {
   float min = voltageRange[channel][0];
   float max = voltageRange[channel][1];
@@ -270,13 +278,14 @@ int setVoltage(float voltage, uint8_t channel) {
   }
 }
 
-// Byte and channel
+// Set the byte for setting the voltage
 void setByte(uint8_t byte, uint8_t channel) {
   digitalWrite(csPins[channel], LOW);
   SPI.transfer(byte);
   digitalWrite(csPins[channel], HIGH);
 }
 
+// Read the voltage from a specific channel, averagd over numSamples
 long readMicroVolts(uint8_t channel, uint8_t numSamples) {
   tcaselect(channel);  // Change I2C Switch to correct channel  
   adc.selectCh1();     // Channel 1 has 50x Divided High voltage
@@ -292,6 +301,7 @@ long readMicroVolts(uint8_t channel, uint8_t numSamples) {
   return (long)(average * 50.0 * calibrationFactor[channel] * 1000000.0);  // 1000000x Convert to microvolts
 }
 
+// Read temprature from thermistor attached, averaged over numSamples
 long readMicroCentigrade(uint8_t channel, uint8_t numSamples) {
   tcaselect(channel);  // Change I2C Switch to correct channel  
   adc.selectCh2();     // Channel 2 has thermistor
