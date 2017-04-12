@@ -1,9 +1,11 @@
-#include "nau7802/NAU7802.h"
-#include "nau7802/NAU7802.cpp"
 #include <Wire.h>
 #include <SPI.h>
 #include <SoftwareWire.h>
 #include <math.h>
+
+#define NAU7802_SOFTWAREWIRE
+#include "nau7802/NAU7802.h"
+#include "nau7802/NAU7802.cpp"
 
 #define i2cSlaveAdress 0x08
 
@@ -37,11 +39,11 @@ static float voltageRange[][2] = {{52.5, 57.5},
                                   {52.5, 57.5},
                                   {52.5, 57.5}};
 
+// Voltage registers
 long readV[8];
 long readT[8];
 long writeV[8];
 uint8_t currentRegister = 0x00;
-uint8_t voltageByte[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 typedef struct registerMap {
   // Read voltage
@@ -176,16 +178,24 @@ void loop(void) {
       Serial.println("%.");
     } else {
       Serial.print("Error, out of range: ");
-      Serial.print(voltageRange[0][0], 3);
+      Serial.print(voltageRange[channel][0], 3);
       Serial.print(" V - ");
-      Serial.print(voltageRange[0][1], 3);
+      Serial.print(voltageRange[channel][1], 3);
       Serial.println(" V");
     }
   }
   #endif //SERIALINTERFACE
 
+  // Update voltage and temprature registers
+  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]); i++) {
+    readV[i] = readMicroVolts(i,10);
+    readT[i] = readMicroCentigrade(i,10);
+  }
+
   for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]); i++) {
     float target = writeV[i]/1000000.0;
+    // Temprature compensate the target voltage
+    target = compensateVoltage(target, readT[i]/1000000.0);
     // Try and set the voltage
     if(setVoltage(target, i) != 0){
       // Set the voltage to the max if request exceeds max by more than 1V
@@ -200,18 +210,6 @@ void loop(void) {
       }
     }
   }
-
-  // Update voltage and temprature registers
-  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]); i++) {
-    readV[i] = readMicroVolts(i,10);
-    readT[i] = readMicroCentigrade(i,10);
-  }
-
-  for (int i = 0; i < sizeof(csPins) / sizeof(csPins[0]) ; i++) {
-    Serial.print(readT[i]/1000000.0,6);
-    Serial.print(",");
-  }
-    Serial.println("");  
 
   // Dump readV and readT to registerStruct
   memcpy(&registers.readV0, &readV, sizeof(readV));
