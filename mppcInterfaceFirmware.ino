@@ -32,12 +32,12 @@
 
 static uint8_t csPins[] = {8, 7, 6, 5};
 // Calibrate voltage offsett out of  
-static float calibrationFactor[] = {1.0, 1.0, 1.0, 1.0};
+static float calibrationFactor[] = {0.987494073, 0.98893583, 0.985186024, 0.98996868};
 // Voltage range , {{min0,max0},{min1,max1}...}
-static float voltageRange[][2] = {{52.5, 57.5},
-                                  {52.5, 57.5},
-                                  {52.5, 57.5},
-                                  {52.5, 57.5}};
+static float voltageRange[][2] = {{53.939, 58.911},
+                                  {53.933, 58.908},
+                                  {53.908, 58.880},
+                                  {53.923, 58.897}};
 
 // Voltage registers
 long readV[8];
@@ -110,7 +110,6 @@ void setup(void) {
 
     // I2C ADC
     tcaselect(i);
-    
     adc.begin(SDA, SCL);
     adc.avcc2V4();
 
@@ -256,7 +255,7 @@ void tcaselect(uint8_t i) {
 // Compensates voltage for temprature variaiton
 float compensateVoltage(float voltageAt25C, float temp){
   float tempDiff = temp-25.0;
-  return (voltageAt25C + (tempDiff * dT_Vop * 0.001)); // Convert to mV, multiply by diffrence in C
+  return (voltageAt25C + (tempDiff * -dT_Vop * 0.001)); // Convert to mV, multiply by diffrence in C
 }
 
 // Given a voltage, set it on the specifc channel
